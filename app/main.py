@@ -8,6 +8,9 @@ from jwt_handler import signJWT
 from Conexion import SessionLocal,engine
 from sqlalchemy.orm import Session
 from jwt_bearer import JWTBearer
+import requests
+import json
+import datetime
 
 
 models.Base.metadata.create_all(bind=engine)
@@ -38,10 +41,6 @@ def show_users(db:Session=Depends(get_db)):
     usuarios = db.query(models.Datos).all()
     return usuarios
 
-# @app.post('/usuarios/',dependencies=[Depends(JWTBearer())],tags=["posts"])
-# def show_users(db:Session=Depends(get_db)):
-#     usuarios = db.query(models.Datos).all()
-#     return usuarios
 
 @app.post("/user/signup", tags=["user"])
 def create_user(user: UserSchema = Body(...)):
@@ -54,30 +53,46 @@ def user_login(user: UserLoginSchema = Body(...)):
     if check_user(user):
         return signJWT(user.email)
     return {
-        "error": "Wrong login details!"
+        "error": "Wrong login details harto!"
     }
 
-
-# @app.post('/usuarios/',response_model=schemas.User)
-# def create_users(entrada:schemas.User,db:Session=Depends(get_db)):
-#     usuario = models.User(username = entrada.username,nombre=entrada.nombre,rol=entrada.rol,estado=entrada.estado)
-#     db.add(usuario)
-#     db.commit()
-#     db.refresh(usuario)
-#     return usuario
-
-# @app.put('/usuarios/{usuario_id}',response_model=schemas.User)
-# def update_users(usuario_id:int,entrada:schemas.UserUpdate,db:Session=Depends(get_db)):
-#     usuario = db.query(models.User).filter_by(id=usuario_id).first()
-#     usuario.nombre=entrada.nombre
-#     db.commit()
-#     db.refresh(usuario)
-#     return usuario
-
-# @app.delete('/usuarios/{usuario_id}',response_model=schemas.Respuesta)
-# def delete_users(usuario_id:int,db:Session=Depends(get_db)):
-#     usuario = db.query(models.User).filter_by(id=usuario_id).first()
-#     db.delete(usuario)
-#     db.commit()
-#     respuesta = schemas.Respuesta(mensaje="Eliminado exitosamente")
-#     return respuesta
+@app.get("/cargadb/", dependencies=[Depends(JWTBearer())], tags=["db"])
+def call_extapi():
+    url_destino = "https://62433a7fd126926d0c5d296b.mockapi.io/api/v1/usuarios/" 
+    engn=engine
+    connection = engn.raw_connection()
+    respuesta = requests.get(url_destino)
+    mycursor = connection.cursor()
+    sqlcode = """INSERT INTO datos 
+                (
+                    id,
+                    fec_alta,
+                    user_name,
+                    codigo_zip,
+                    credit_car_num,
+                    cuenta_numero,
+                    direccion,
+                    geo_latitud,
+                    geo_longitud,
+                    color_favorito,
+                    foto_dni,
+                    ip,
+                    auto,
+                    auto_modelo,
+                    auto_tipo,
+                    auto_color,
+                    cant_compras,
+                    avatar,
+                    fec_nacimiento) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+    arrRespuesta = respuesta.json()
+    for usuario in arrRespuesta:
+        mycursor.execute(sqlcode, (usuario['id'], \
+        datetime.datetime.strptime(usuario['fec_alta'], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M:%S'), \
+        usuario['user_name'], usuario['codigo_zip'], \
+        usuario['credit_card_ccv'], usuario['cuenta_numero'], usuario['direccion'], usuario['geo_latitud'], usuario['geo_longitud'], \
+        usuario['color_favorito'], usuario['foto_dni'], usuario['ip'], usuario['auto'], usuario['auto_modelo'], \
+        usuario['auto_tipo'], usuario['auto_color'], usuario['cantidad_compras_realizadas'], usuario['avatar'], \
+        datetime.datetime.strptime(usuario['fec_birthday'], '%Y-%m-%dT%H:%M:%S.%fZ').strftime('%Y-%m-%d %H:%M:%S') ))
+    connection.commit()
+    return "ok"
