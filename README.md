@@ -31,11 +31,17 @@ pip install -r requirements.txt
 6. Instalar manualmente las sigientes librerias
 ...
 pip install httptools
+
 pip install mysqlclient
+
 pip install ujson
+
 pip install PyJWT
+
 pip install python-decouple
+
 pip install request
+
 ...
 
 ## DESPLEGANDO EL AMBIENTE
